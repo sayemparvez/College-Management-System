@@ -42,29 +42,58 @@ const getUserRole = (req) => {
 
 /* ============================================================
    GET STUDENTS FOR ATTENDANCE
+   Supports:
+   - ?courses=X,Y&sem=Z → returns students from multiple courses (comma-separated), same sem
+   - ?course=X&sem=Y    → returns students from a single course/sem
+   Note: subjectcode is no longer used for routing since attendance is always DAILY_1ST
 ============================================================ */
 
 exports.getStudents = async (req, res) => {
-    const { course, sem } = req.query;
-
-    if (!course || !sem) {
-        return res.status(400).json({ message: "Course and semester required" });
-    }
+    const { course, courses, sem } = req.query;
 
     try {
-        const result = await db.query(
-            `SELECT sr_no, rollnumber, firstname, lastname
-             FROM students
-             WHERE Courcecode = $1 AND semoryear = $2
-             ORDER BY rollnumber`,
-            [course, sem]
-        );
+        let result;
+
+        if (courses && sem) {
+            // Multi-course: comma-separated list of course codes
+            const courseList = courses.split(",").map(c => c.trim()).filter(Boolean);
+
+            if (courseList.length === 0) {
+                return res.status(400).json({ message: "No valid courses provided" });
+            }
+
+            const conditions = courseList.map((_, i) =>
+                `s.Courcecode = $${i + 2}`
+            ).join(" OR ");
+
+            result = await db.query(
+                `SELECT sr_no, rollnumber, firstname, lastname, Courcecode AS courcecode, semoryear
+                 FROM students s
+                 WHERE s.semoryear = $1
+                   AND (${conditions})
+                 ORDER BY s.Courcecode, s.rollnumber`,
+                [sem, ...courseList]
+            );
+        } else if (course && sem) {
+            // Single course
+            result = await db.query(
+                `SELECT sr_no, rollnumber, firstname, lastname, Courcecode AS courcecode, semoryear
+                 FROM students
+                 WHERE Courcecode = $1 AND semoryear = $2
+                 ORDER BY rollnumber`,
+                [course, sem]
+            );
+        } else {
+            return res.status(400).json({ message: "Course and semester are required" });
+        }
 
         const formatted = result.rows.map(student => ({
             student_id: student.sr_no,
             rollnumber: student.rollnumber,
             firstname: student.firstname,
             lastname: student.lastname,
+            courcecode: student.courcecode,
+            semoryear: student.semoryear,
             profilepic: getStudentImage(student.rollnumber)
         }));
 
@@ -78,35 +107,48 @@ exports.getStudents = async (req, res) => {
 
 /* ============================================================
    GET ATTENDANCE BY DATE
+   Accepts courcecodes as comma-separated string for multi-course support.
+   Joins attendance by student_id + subjectcode + date only (no courcecode
+   filter in JOIN, since each student's record has their own courcecode).
 ============================================================ */
 
 exports.getAttendanceByDate = async (req, res) => {
     let { subjectcode, date, courcecode, semoryear } = req.query;
 
-    if (!subjectcode || !date || !courcecode || !semoryear) {
+    if (!subjectcode || !date) {
         return res.status(400).json({ message: "Missing required filters" });
     }
 
-    date = String(date).slice(0, 10);   // FIXED
+    date = String(date).slice(0, 10);
 
     try {
+        // Support comma-separated courcecodes for multi-class view
+        const courcecodes = courcecode ? courcecode.split(",").map(c => c.trim()).filter(Boolean) : [];
+
+        if (courcecodes.length === 0) {
+            return res.status(400).json({ message: "Missing courcecode" });
+        }
+
+        const courseConditions = courcecodes.map((_, i) =>
+            `s.Courcecode = $${i + 3}`
+        ).join(" OR ");
+
+        const params = [subjectcode, date, ...courcecodes];
+
         const result = await db.query(
             `
-                SELECT
-                    s.sr_no AS student_id,
-                    COALESCE(a.present, 0) AS present
-                FROM students s
-                         LEFT JOIN attendance a
-                                   ON s.sr_no = a.student_id
-                                       AND a.subjectcode = $1
-                                       AND a.attendance_date = $2
-                                       AND a.courcecode = $3
-                                       AND a.semoryear = $4
-                WHERE s.Courcecode = $5
-                  AND s.semoryear = $6
-                ORDER BY s.rollnumber
+            SELECT
+                s.sr_no AS student_id,
+                COALESCE(a.present, 0) AS present
+            FROM students s
+            LEFT JOIN attendance a
+                ON s.sr_no = a.student_id
+                AND a.subjectcode = $1
+                AND a.attendance_date = $2
+            WHERE (${courseConditions})
+            ORDER BY s.Courcecode, s.rollnumber
             `,
-            [subjectcode, date, courcecode, semoryear, courcecode, semoryear]
+            params
         );
 
         res.json(result.rows);
@@ -119,41 +161,75 @@ exports.getAttendanceByDate = async (req, res) => {
 
 /* ============================================================
    SAVE / UPDATE ATTENDANCE
+   Each student's attendance is saved with their OWN courcecode/semoryear,
+   looked up from the students table. This supports shared-subject scenarios
+   where students from multiple classes appear in one attendance sheet.
 ============================================================ */
 
 exports.saveAttendance = async (req, res) => {
     let { subjectcode, date, courcecode, semoryear, records } = req.body;
 
-    if (!subjectcode || !date || !courcecode || !semoryear || !Array.isArray(records)) {
+    if (!subjectcode || !date || !Array.isArray(records)) {
         return res.status(400).json({ message: "Missing required fields" });
     }
 
-    date = String(date).slice(0, 10);   // FIXED
-
+    date = String(date).slice(0, 10);
 
     const todayDate = getTodayDate();
     const userRole = getUserRole(req);
 
-    if (userRole === "faculty" && date !== todayDate) {
-        return res.status(403).json({
-            message: "Faculty can edit attendance only for today's date"
-        });
+    if (userRole === "faculty") {
+        if (date !== todayDate) {
+            return res.status(403).json({
+                message: "Faculty can take attendance only for today's date"
+            });
+        }
+
+        // Check if attendance is already submitted for these students on this date
+        const studentIds = records.map(r => r.student_id);
+        const existingCheck = await db.query(
+            `SELECT 1 FROM attendance WHERE subjectcode = $1 AND attendance_date = $2 AND student_id = ANY($3::int[]) LIMIT 1`,
+            [subjectcode, date, studentIds]
+        );
+
+        if (existingCheck.rows.length > 0) {
+            return res.status(403).json({
+                message: "হাজিরা ইতিমধ্যে জমা দেওয়া হয়েছে। সাবমিট করার পর শুধুমাত্র অ্যাডমিন হাজিরা এডিট বা সংশোধন করতে পারবেন।"
+            });
+        }
     }
 
     try {
-        const values = records.map(r => [
-            r.student_id,
-            subjectcode,
-            date,
-            r.present,
-            courcecode,
-            Number(semoryear)
-        ]);
+        // Fetch each student's own courcecode and semoryear from the DB
+        const studentIds = records.map(r => r.student_id);
+
+        const studentResult = await db.query(
+            `SELECT sr_no, Courcecode AS courcecode, semoryear FROM students WHERE sr_no = ANY($1::int[])`,
+            [studentIds]
+        );
+
+        const studentMap = new Map(
+            studentResult.rows.map(s => [s.sr_no, { courcecode: s.courcecode, semoryear: s.semoryear }])
+        );
+
+        const values = records.map(r => {
+            const studentInfo = studentMap.get(r.student_id);
+            const studentCourcecode = studentInfo?.courcecode || courcecode;
+            const studentSemoryear = studentInfo?.semoryear ?? Number(semoryear);
+
+            return [
+                r.student_id,
+                subjectcode,
+                date,
+                r.present,
+                studentCourcecode,
+                studentSemoryear
+            ];
+        });
 
         if (values.length > 0) {
             const placeholders = values.map((_, index) => {
                 const offset = index * 6;
-
                 return `(
                     $${offset + 1},
                     $${offset + 2},
@@ -236,27 +312,47 @@ exports.getReport = async (req, res) => {
 
 /* ============================================================
    GET EXISTING ATTENDANCE DATES
+   When subjectcode is provided, returns dates across all courses sharing
+   that subject. Optionally filtered by comma-separated courcecodes.
 ============================================================ */
 
 exports.getAttendanceDates = async (req, res) => {
     const { subjectcode, courcecode, semoryear } = req.query;
 
-    if (!subjectcode || !courcecode || !semoryear) {
-        return res.status(400).json({ message: "Missing filters" });
+    if (!subjectcode) {
+        return res.status(400).json({ message: "Missing subjectcode" });
     }
 
     try {
-        const result = await db.query(
-            `
+        let result;
+
+        if (courcecode) {
+            // Filter by specific course(s) — supports comma-separated list
+            const courcecodes = courcecode.split(",").map(c => c.trim());
+            const placeholders = courcecodes.map((_, i) => `$${i + 2}`).join(", ");
+
+            result = await db.query(
+                `
                 SELECT DISTINCT TO_CHAR(attendance_date, 'YYYY-MM-DD') AS date
                 FROM attendance
                 WHERE subjectcode = $1
-                  AND courcecode = $2
-                  AND semoryear = $3
+                  AND courcecode IN (${placeholders})
                 ORDER BY date DESC
-            `,
-            [subjectcode, courcecode, semoryear]
-        );
+                `,
+                [subjectcode, ...courcecodes]
+            );
+        } else {
+            // All courses for this subject (shared subject scenario)
+            result = await db.query(
+                `
+                SELECT DISTINCT TO_CHAR(attendance_date, 'YYYY-MM-DD') AS date
+                FROM attendance
+                WHERE subjectcode = $1
+                ORDER BY date DESC
+                `,
+                [subjectcode]
+            );
+        }
 
         res.json(result.rows);
 
@@ -268,28 +364,43 @@ exports.getAttendanceDates = async (req, res) => {
 
 /* ============================================================
    DELETE ATTENDANCE
+   Supports comma-separated courcecodes. If none provided, deletes
+   attendance for the subjectcode + date across all courses.
 ============================================================ */
 
 exports.deleteAttendance = async (req, res) => {
     let { subjectcode, date, courcecode, semoryear } = req.body;
 
-    if (!subjectcode || !date || !courcecode || !semoryear) {
+    if (!subjectcode || !date) {
         return res.status(400).json({ message: "Missing required filters" });
     }
 
-    date = String(date).slice(0, 10);   // FIXED
+    date = String(date).slice(0, 10);
 
     try {
-        await db.query(
-            `
+        if (courcecode) {
+            const courcecodes = courcecode.split(",").map(c => c.trim());
+            const placeholders = courcecodes.map((_, i) => `$${i + 3}`).join(", ");
+
+            await db.query(
+                `
                 DELETE FROM attendance
                 WHERE subjectcode = $1
                   AND attendance_date = $2
-                  AND courcecode = $3
-                  AND semoryear = $4
-            `,
-            [subjectcode, date, courcecode, semoryear]
-        );
+                  AND courcecode IN (${placeholders})
+                `,
+                [subjectcode, date, ...courcecodes]
+            );
+        } else {
+            await db.query(
+                `
+                DELETE FROM attendance
+                WHERE subjectcode = $1
+                  AND attendance_date = $2
+                `,
+                [subjectcode, date]
+            );
+        }
 
         res.json({ message: "Attendance deleted successfully" });
 
@@ -345,6 +456,9 @@ exports.downloadAttendanceTemplate = async (req, res) => {
 
 /* ============================================================
    IMPORT ATTENDANCE FROM EXCEL
+   Supports shared-subject: looks up students from all courses that
+   have this subject, and saves each student's attendance with their
+   own courcecode.
 ============================================================ */
 
 exports.importAttendance = async (req, res) => {
@@ -354,21 +468,20 @@ exports.importAttendance = async (req, res) => {
         return res.status(400).json({ message: "Excel file is required" });
     }
 
-    if (!subjectcode || !date || !courcecode || !semoryear) {
+    if (!subjectcode || !date) {
         return res.status(400).json({ message: "Missing required fields" });
     }
 
+    // Check for existing attendance (across all courses sharing this subject)
     const existingAttendanceResult = await db.query(
         `
             SELECT 1
             FROM attendance
             WHERE subjectcode = $1
               AND attendance_date = $2
-              AND courcecode = $3
-              AND semoryear = $4
             LIMIT 1
         `,
-        [subjectcode, date, courcecode, Number(semoryear)]
+        [subjectcode, date]
     );
 
     const existingAttendance = existingAttendanceResult.rows;
@@ -401,21 +514,41 @@ exports.importAttendance = async (req, res) => {
             return res.status(400).json({ message: "Excel file is empty" });
         }
 
-        const studentsResult = await db.query(
-            `
-                SELECT sr_no, rollnumber
-                FROM students
-                WHERE Courcecode = $1 AND semoryear = $2
-            `,
-            [courcecode, semoryear]
-        );
+        // Get ALL students from all courses that share this subject
+        let studentsResult;
+        if (courcecode) {
+            studentsResult = await db.query(
+                `SELECT sr_no, rollnumber, Courcecode AS courcecode, semoryear FROM students WHERE Courcecode = $1`,
+                [courcecode]
+            );
+        } else {
+            // Fetch students from all courses that have this subject
+            const courseResult = await db.query(
+                `SELECT DISTINCT courcecode, semoryear FROM subject WHERE subjectcode = $1`,
+                [subjectcode]
+            );
+            const coursePairs = courseResult.rows;
+
+            if (coursePairs.length > 0) {
+                const conditions = coursePairs.map((_, i) =>
+                    `(Courcecode = $${i * 2 + 1} AND semoryear = $${i * 2 + 2})`
+                ).join(" OR ");
+                const params = coursePairs.flatMap(p => [p.courcecode, p.semoryear]);
+                studentsResult = await db.query(
+                    `SELECT sr_no, rollnumber, Courcecode AS courcecode, semoryear FROM students WHERE ${conditions}`,
+                    params
+                );
+            } else {
+                studentsResult = { rows: [] };
+            }
+        }
 
         const students = studentsResult.rows;
 
         const rollMap = new Map(
             students.map((student) => [
                 String(student.rollnumber).trim(),
-                student.sr_no
+                { sr_no: student.sr_no, courcecode: student.courcecode, semoryear: student.semoryear }
             ])
         );
 
@@ -499,15 +632,15 @@ exports.importAttendance = async (req, res) => {
                 normalizedPresent = 0;
             }
 
-            const student_id = rollMap.get(rollnumber);
+            const studentInfo = rollMap.get(rollnumber);
 
             values.push([
-                student_id,
+                studentInfo.sr_no,
                 subjectcode,
                 date,
                 normalizedPresent,
-                courcecode,
-                Number(semoryear)
+                studentInfo.courcecode,
+                Number(studentInfo.semoryear)
             ]);
         });
 

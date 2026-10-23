@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../utils/api";
-import ConfirmSaveModal from "../../components/modals/ConfirmSaveModal";
 import { 
     ClipboardEdit, 
     Filter, 
     RotateCcw, 
-    Save, 
     AlertCircle, 
     ListChecks, 
-    CheckCircle2,
     Calendar,
     BookOpen,
-    UserCheck,
-    Loader2
+    Loader2,
+    Lock
 } from "lucide-react";
 
-// Refined InfoCard to match the new aesthetic
 function InfoCard({ label, value, icon: Icon }) {
     return (
         <div className="bg-slate-50/50 dark:bg-slate-950/30 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4">
@@ -35,7 +31,6 @@ function InfoCard({ label, value, icon: Icon }) {
 export default function FacultyEditAttendance() {
     const token = localStorage.getItem("token");
 
-    // Existing State (Untouched)
     const [assignedSubjects, setAssignedSubjects] = useState([]);
     const [students, setStudents] = useState([]);
     const [attendanceDates, setAttendanceDates] = useState([]);
@@ -46,19 +41,6 @@ export default function FacultyEditAttendance() {
     const [loadingStudents, setLoadingStudents] = useState(false);
     const [loadingAttendance, setLoadingAttendance] = useState(false);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
-    const [warning, setWarning] = useState("");
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [savingAttendance, setSavingAttendance] = useState(false);
-
-    // Existing Logic (Untouched)
-    const todayDate = useMemo(() => {
-        const today = new Date();
-        const y = today.getFullYear();
-        const m = String(today.getMonth() + 1).padStart(2, "0");
-        const d = String(today.getDate()).padStart(2, "0");
-        return `${y}-${m}-${d}`;
-    }, []);
 
     const handleReset = () => {
         setSelectedSubject("");
@@ -67,7 +49,6 @@ export default function FacultyEditAttendance() {
         setStudents([]);
         setAttendanceDates([]);
         setError("");
-        setSuccess("");
     };
 
     useEffect(() => {
@@ -98,7 +79,6 @@ export default function FacultyEditAttendance() {
 
     const selectedCourse = selectedSubjectObj?.courcecode || "";
     const selectedSem = selectedSubjectObj?.semoryear || "";
-    const canEdit = selectedDate === todayDate;
 
     useEffect(() => {
         if (!selectedSubject || !selectedCourse || !selectedSem) {
@@ -133,7 +113,7 @@ export default function FacultyEditAttendance() {
         }
         const fetchDates = async () => {
             try {
-                const res = await api.get(`/api/attendance/dates?subjectcode=${selectedSubject}&courcecode=${selectedCourse}&semoryear=${selectedSem}`, {
+                const res = await api.get(`/api/attendance/dates?subjectcode=DAILY_1ST&courcecode=${selectedCourse}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 setAttendanceDates((res.data || []).map((item) => item.date));
@@ -149,7 +129,7 @@ export default function FacultyEditAttendance() {
         const loadAttendance = async () => {
             try {
                 setLoadingAttendance(true);
-                const res = await api.get(`/api/attendance?subjectcode=${selectedSubject}&date=${selectedDate}&courcecode=${selectedCourse}&semoryear=${selectedSem}`, {
+                const res = await api.get(`/api/attendance?subjectcode=DAILY_1ST&date=${selectedDate}&courcecode=${selectedCourse}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 const map = {};
@@ -167,51 +147,11 @@ export default function FacultyEditAttendance() {
         loadAttendance();
     }, [selectedCourse, selectedSem, selectedSubject, selectedDate, students, token]);
 
-    useEffect(() => {
-        if (!selectedDate) { setWarning(""); return; }
-        if (selectedDate !== todayDate) {
-            setWarning("Attendance can only be edited on today's date.");
-            const timer = setTimeout(() => setWarning(""), 3000);
-            return () => clearTimeout(timer);
-        }
-        setWarning("");
-    }, [selectedDate, todayDate]);
-
-    const toggleStudent = (id) => {
-        if (!canEdit) return;
-        setCheckedStudents((prev) => ({ ...prev, [id]: !prev[id] }));
-    };
-
-    const updateAttendance = async () => {
-        setShowConfirmModal(false);
-        try {
-            setSavingAttendance(true);
-            const records = students.map((student) => ({
-                student_id: student.student_id,
-                present: checkedStudents[student.student_id] ? 1 : 0,
-            }));
-            await api.post("/api/attendance", {
-                subjectcode: selectedSubject,
-                date: selectedDate,
-                courcecode: selectedCourse,
-                semoryear: Number(selectedSem),
-                records,
-            }, { headers: { Authorization: `Bearer ${token}` } });
-            setSuccess("Attendance updated successfully.");
-            setTimeout(() => handleReset(), 1500);
-        } catch (err) {
-            setError(err?.response?.data?.message || "Failed to update attendance.");
-        } finally {
-            setSavingAttendance(false);
-        }
-    };
-
     const isReady = selectedSubject && selectedCourse && selectedSem && selectedDate;
 
     return (
         <div className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans">
             
-            {/* FIXED HEADER - CHANGED FROM sticky TO relative SO IT SCROLLS UP */}
             <header className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -220,7 +160,7 @@ export default function FacultyEditAttendance() {
                         </div>
                         <div>
                             <h1 className="text-lg font-bold tracking-tight leading-tight">Faculty Portal</h1>
-                            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest hidden sm:block">Edit Attendance Record</p>
+                            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest hidden sm:block">View Attendance Record</p>
                         </div>
                     </div>
                     <button onClick={handleReset} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors">
@@ -229,30 +169,26 @@ export default function FacultyEditAttendance() {
                 </div>
             </header>
 
-            {/* MAIN CONTENT AREA */}
             <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-6 space-y-6 pb-24">
                 
-                {/* NOTIFICATIONS */}
-                {(error || success || warning) && (
-                    <div className="space-y-3 animate-in slide-in-from-top-2">
-                        {error && (
-                            <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-sm font-semibold">
-                                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                                <p>{error}</p>
-                            </div>
-                        )}
-                        {success && (
-                            <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
-                                <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                                <p>{success}</p>
-                            </div>
-                        )}
-                        {warning && (
-                            <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl text-amber-700 dark:text-amber-400 text-sm font-semibold">
-                                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                                <p>{warning}</p>
-                            </div>
-                        )}
+                {/* POLICY LOCK BANNER */}
+                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200">
+                    <Lock className="w-5 h-5 mt-0.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <div className="space-y-1">
+                        <p className="font-bold text-sm">স্কুল হাজিরা লক নীতিমালা (Attendance Edit Policy):</p>
+                        <p>
+                            শ্রেণি শিক্ষক কর্তৃক একবার হাজিরা সাবমিট করার পর তা শিক্ষক অ্যাকাউন্ট থেকে আর পরিবর্তন বা এডিট করা যাবে না।
+                        </p>
+                        <p>
+                            যেকোনো সংশোধন বা ভুল সংশোধনের জন্য শুধুমাত্র স্কুলের প্রধান শিক্ষক বা অ্যাডমিন মহোদয়ের সাথে যোগাযোগ করুন। অ্যাডমিন পোর্টাল থেকে যেকোনো হাজিরা সংশোধন করা সম্ভব।
+                        </p>
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-sm font-semibold">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <p>{error}</p>
                     </div>
                 )}
 
@@ -265,25 +201,25 @@ export default function FacultyEditAttendance() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Subject</label>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Class / Subject</label>
                             <select 
                                 value={selectedSubject} 
-                                onChange={(e) => { setSelectedSubject(e.target.value); setSelectedDate(""); setCheckedStudents({}); setError(""); setSuccess(""); }}
+                                onChange={(e) => { setSelectedSubject(e.target.value); setSelectedDate(""); setCheckedStudents({}); setError(""); }}
                                 disabled={loadingSubjects}
                                 className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer disabled:opacity-50"
                             >
-                                <option value="">{loadingSubjects ? "Loading..." : "Choose Subject"}</option>
+                                <option value="">{loadingSubjects ? "Loading..." : "Choose Class / Subject"}</option>
                                 {assignedSubjects.map((sub, idx) => (
-                                    <option key={`${sub.subjectcode}-${idx}`} value={sub.subjectcode}>{sub.subjectname}</option>
+                                    <option key={`${sub.subjectcode}-${idx}`} value={sub.subjectcode}>{sub.subjectname} ({sub.courcecode})</option>
                                 ))}
                             </select>
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Date</label>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Attendance Date (তারিখ)</label>
                             <select 
                                 value={selectedDate} 
-                                onChange={(e) => { setSelectedDate(e.target.value); setError(""); setSuccess(""); }}
+                                onChange={(e) => { setSelectedDate(e.target.value); setError(""); }}
                                 disabled={!selectedSubject}
                                 className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer disabled:opacity-50"
                             >
@@ -296,12 +232,12 @@ export default function FacultyEditAttendance() {
                     </div>
                 </section>
 
-                {/* INFO CARDS GRID */}
+                {/* INFO CARDS */}
                 {selectedSubjectObj && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in duration-500">
-                        <InfoCard label="Course Code" value={selectedCourse} icon={BookOpen} />
-                        <InfoCard label="Sem / Year" value={selectedSem} icon={RotateCcw} />
-                        <InfoCard label="Status" value={canEdit ? "Editing Enabled" : "Read Only"} icon={Calendar} />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in duration-500">
+                        <InfoCard label="Class" value={selectedCourse} icon={BookOpen} />
+                        <InfoCard label="Term" value={`Term ${selectedSem}`} icon={RotateCcw} />
+                        <InfoCard label="Status" value="Read Only (Locked by Policy)" icon={Lock} />
                     </div>
                 )}
 
@@ -340,8 +276,7 @@ export default function FacultyEditAttendance() {
                                         students.map((student, idx) => (
                                             <tr 
                                                 key={student.student_id} 
-                                                className={`${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/10'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 transition-colors cursor-pointer`}
-                                                onClick={() => toggleStudent(student.student_id)}
+                                                className={`${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/10'}`}
                                             >
                                                 <td className="w-[35%] sm:w-[25%] px-4 sm:px-6 py-4">
                                                     <div className="text-[11px] sm:text-xs font-mono font-bold text-slate-600 dark:text-slate-400 truncate">{student.rollnumber}</div>
@@ -351,13 +286,12 @@ export default function FacultyEditAttendance() {
                                                         {student.firstname} {student.lastname}
                                                     </div>
                                                 </td>
-                                                <td className="w-[20%] sm:w-[25%] px-4 sm:px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                <td className="w-[20%] sm:w-[25%] px-4 sm:px-6 py-4 text-center">
                                                     <input
                                                         type="checkbox"
                                                         checked={!!checkedStudents[student.student_id]}
-                                                        onChange={() => toggleStudent(student.student_id)}
-                                                        disabled={!canEdit}
-                                                        className="h-5 w-5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 bg-white dark:bg-slate-900 focus:ring-indigo-500 disabled:opacity-40 transition-colors cursor-pointer"
+                                                        disabled={true}
+                                                        className="h-5 w-5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 bg-white dark:bg-slate-900 opacity-60 cursor-not-allowed"
                                                     />
                                                 </td>
                                             </tr>
@@ -373,61 +307,25 @@ export default function FacultyEditAttendance() {
                             <ListChecks className="w-8 h-8 text-indigo-500" />
                         </div>
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Fetch Records</h2>
-                        <p className="text-sm text-slate-500 mt-1 max-w-xs">Select a subject and date to begin editing today&apos;s attendance.</p>
+                        <p className="text-sm text-slate-500 mt-1 max-w-xs">Select a class/subject and date to view submitted attendance records.</p>
                     </div>
                 )}
             </main>
 
-            {/* STICKY BOTTOM ACTION BAR */}
+            {/* ACTION BAR (READ ONLY) */}
             {isReady && students.length > 0 && (
                 <div className="sticky bottom-0 mt-auto w-full z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
                     <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-                        <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-slate-500">
-                            {canEdit ? (
-                                <>
-                                    <UserCheck className="w-4 h-4 text-emerald-500" />
-                                    <span>Updating record for {selectedDate}</span>
-                                </>
-                            ) : (
-                                <>
-                                    <AlertCircle className="w-4 h-4 text-amber-500" />
-                                    <span>Historical records are read-only</span>
-                                </>
-                            )}
+                        <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
+                            <Lock className="w-4 h-4" />
+                            <span>Submitted records are locked • Only School Admin can edit or modify</span>
                         </div>
-                        <div className="flex w-full sm:w-auto items-center justify-end gap-3">
-                            <button 
-                                onClick={() => setShowConfirmModal(true)}
-                                disabled={!canEdit || savingAttendance}
-                                className="w-full sm:w-auto px-8 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 disabled:opacity-40 transition-all active:scale-95 flex items-center justify-center gap-2"
-                            >
-                                {savingAttendance ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span>Saving...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="w-4 h-4" />
-                                        <span>Update Attendance</span>
-                                    </>
-                                )}
-                            </button>
+                        <div className="text-xs text-slate-500 font-semibold">
+                            Viewing {students.length} students for {selectedDate}
                         </div>
                     </div>
                 </div>
             )}
-
-            {/* MODALS */}
-            <ConfirmSaveModal
-                show={showConfirmModal}
-                title="Confirm Updates"
-                message={`Are you sure you want to save the modified attendance for ${selectedDate}?`}
-                confirmText="Yes, Update"
-                loading={savingAttendance}
-                onCancel={() => setShowConfirmModal(false)}
-                onConfirm={updateAttendance}
-            />
         </div>
     );
 }

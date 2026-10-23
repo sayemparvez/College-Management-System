@@ -1,16 +1,14 @@
 const db = require("../config/db");
 
 exports.getStudentMarks = async (req, res) => {
-
   try {
-
     const email = req.user.email;
 
     // optional filters from frontend
     const { sem, subject } = req.query;
 
     const studentResult = await db.query(
-        "SELECT rollnumber, Courcecode FROM students WHERE emailid = $1",
+        "SELECT rollnumber, Courcecode, semoryear FROM students WHERE emailid = $1",
         [email]
     );
 
@@ -20,7 +18,26 @@ exports.getStudentMarks = async (req, res) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    const { rollnumber, Courcecode } = student[0];
+    const { rollnumber, courcecode } = student[0];
+    const targetSem = sem || student[0].semoryear || 1;
+
+    // CHECK IF RESULT IS APPROVED AND PUBLISHED BY HEAD TEACHER OR ADMIN
+    const resultCheck = await db.query(
+        "SELECT isdeclared, declared_by, declared_at FROM result WHERE courcecode = $1 AND semoryear = $2",
+        [courcecode, targetSem]
+    );
+
+    const isPublished = resultCheck.rows.length > 0 && Number(resultCheck.rows[0].isdeclared) === 1;
+
+    if (!isPublished) {
+      return res.json({
+        isPublished: false,
+        message: "আপনার শ্রেণির ফলাফল এখনও প্রধান শিক্ষক বা অ্যাডমিন কর্তৃক অনুমোদন ও প্রকাশ করা হয়নি। ফলাফল প্রকাশ হওয়া মাত্রই আপনি এখানে পূর্ণাঙ্গ নম্বর ও গ্রেড দেখতে পাবেন।",
+        marks: [],
+        course: courcecode,
+        roll: rollnumber
+      });
+    }
 
     // dynamic query
     let query = `
@@ -47,7 +64,7 @@ exports.getStudentMarks = async (req, res) => {
         AND m.Courcecode = $2
     `;
 
-    const params = [rollnumber, Courcecode];
+    const params = [rollnumber, courcecode];
 
     if (sem) {
       params.push(sem);
@@ -102,8 +119,11 @@ exports.getStudentMarks = async (req, res) => {
     });
 
     res.json({
+      isPublished: true,
+      declared_by: resultCheck.rows[0]?.declared_by,
+      declared_at: resultCheck.rows[0]?.declared_at,
       marks: rows,
-      course: Courcecode,
+      course: courcecode,
       roll: rollnumber
     });
 
@@ -111,5 +131,4 @@ exports.getStudentMarks = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
-
 };

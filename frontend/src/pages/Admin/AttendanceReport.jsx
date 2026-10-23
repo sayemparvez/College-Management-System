@@ -19,7 +19,7 @@ const AttendanceReport = () => {
     const [reportData, setReportData] = useState([]);
 
     const [selectedCourse, setSelectedCourse] = useState("");
-    const [selectedSem, setSelectedSem] = useState("");
+    const [selectedSem, setSelectedSem] = useState("1");
     const [selectedSubject, setSelectedSubject] = useState("");
 
     const [loading, setLoading] = useState(false);
@@ -124,23 +124,23 @@ const AttendanceReport = () => {
                         <Filter className="w-4 h-4 text-indigo-500" />
                         <h2 className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Report Parameters</h2>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <select value={selectedCourse} onChange={(e) => { setSelectedCourse(e.target.value); setSelectedSem(""); setSelectedSubject(""); }}
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer">
-                            <option value="">Select Course...</option>
-                            {courses.map(c => <option key={c.id} value={c.course_code}>{c.course_name}</option>)}
-                        </select>
-                        <select value={selectedSem} disabled={!selectedCourse} onChange={(e) => { setSelectedSem(e.target.value); setSelectedSubject(""); }}
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm disabled:opacity-40 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer">
-                            <option value="">Select {semLabel}...</option>
-                            {semesterOptions.map(num => <option key={num} value={num}>{semLabel} {num}</option>)}
-                        </select>
-                        <select value={selectedSubject} disabled={!selectedSem} onChange={(e) => setSelectedSubject(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm disabled:opacity-40 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer">
-                            <option value="">Select Subject / পিরিয়ড...</option>
-                            <option value="DAILY_1ST">1st Period / Daily Attendance (১ম পিরিয়ড - দৈনিক হাজিরা)</option>
-                            {subjects.map(s => <option key={s.subjectcode} value={s.subjectcode}>{s.subjectname}</option>)}
-                        </select>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Class (শ্রেণি)</label>
+                            <select value={selectedCourse} onChange={(e) => { setSelectedCourse(e.target.value); }}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer">
+                                <option value="">Select Class / শ্রেণি...</option>
+                                {courses.map(c => <option key={c.id} value={c.course_code}>{c.course_name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Period / Subject (পিরিয়ড বা বিষয়)</label>
+                            <select value={selectedSubject} disabled={!selectedCourse} onChange={(e) => setSelectedSubject(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm disabled:opacity-40 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer">
+                                <option value="DAILY_1ST">1st Period / Daily Attendance (১ম পিরিয়ড - দৈনিক হাজিরা)</option>
+                                {subjects.map(s => <option key={s.subjectcode} value={s.subjectcode}>{s.subjectname}</option>)}
+                            </select>
+                        </div>
                     </div>
                 </section>
 

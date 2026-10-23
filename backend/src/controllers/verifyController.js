@@ -24,13 +24,13 @@ exports.verifyMarksheet = async (req, res) => {
         const sem = parts[2];
         const rollNumber = parts[3];
 
-        // 2. Get College Info
+        // 2. Get School Info
         const adminResult = await db.query(
             `SELECT collagename FROM admin LIMIT 1`
         );
 
         const adminRows = adminResult.rows;
-        const collegeName = adminRows.length ? adminRows[0].collagename : "College";
+        const SchoolName = adminRows.length ? adminRows[0].collagename : "School";
 
         // 3. Fetch Student Data
         // Using your exact column names: Courcecode, semoryear
@@ -51,6 +51,18 @@ exports.verifyMarksheet = async (req, res) => {
         }
 
         const student = studentRows[0];
+
+        // 3.5 Check if result has been officially approved & published
+        const resultCheck = await db.query(
+            "SELECT isdeclared FROM result WHERE courcecode = $1 AND semoryear = $2",
+            [courseCode, sem]
+        );
+        if (!resultCheck.rows.length || Number(resultCheck.rows[0].isdeclared) !== 1) {
+            return res.status(403).json({
+                isValid: false,
+                message: "এই পরীক্ষার ফলাফল এখনও প্রধান শিক্ষক বা অ্যাডমিন কর্তৃক অনুমোদন ও প্রকাশ করা হয়নি।"
+            });
+        }
 
         // 4. Fetch Student Marks
         const marksResult = await db.query(
@@ -186,7 +198,7 @@ exports.verifyMarksheet = async (req, res) => {
         res.json({
             isValid: true,
             verificationId: marksheetId,
-            collegeName,
+            SchoolName,
             examName,
             student: {
                 rollnumber: student.rollnumber,

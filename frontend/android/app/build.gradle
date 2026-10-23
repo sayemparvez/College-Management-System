@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.college.cms"
+    namespace = "com.School.cms"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.college.cms"
+        applicationId "com.School.cms"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

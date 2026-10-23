@@ -575,3 +575,33 @@ exports.importStudentsFromExcel = async (req, res) => {
     res.status(500).json({ message: "Import failed" });
   }
 };
+// ============================
+// Admin: Promote Students
+// ============================
+
+exports.promoteStudents = async (req, res) => {
+  try {
+    const { fromCourse, toCourse, studentIds } = req.body;
+
+    if (!fromCourse || !toCourse || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ message: "Source class, target class, and student selection are required." });
+    }
+
+    const result = await db.query(
+      `UPDATE students
+       SET Courcecode = $1, semoryear = 1
+       WHERE sr_no = ANY($2::int[]) AND Courcecode = $3
+       RETURNING sr_no, rollnumber, firstname, lastname`,
+      [toCourse, studentIds, fromCourse]
+    );
+
+    res.json({
+      message: `Successfully promoted ${result.rowCount} student(s) to ${toCourse}.`,
+      promotedCount: result.rowCount,
+      students: result.rows
+    });
+  } catch (error) {
+    console.error("Error promoting students:", error);
+    res.status(500).json({ message: "Failed to promote students." });
+  }
+};

@@ -154,7 +154,7 @@ const Login = () => {
                         {!useFallback ? (
                             <img
                                 src={`${BASE_URL}/uploads/admin/admin.jpg`}
-                                alt="College Logo"
+                                alt="School Logo"
                                 className="w-full h-full object-cover"
                                 onError={() => setUseFallback(true)}
                             />
@@ -196,7 +196,7 @@ const Login = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                                    placeholder="name@college.edu"
+                                    placeholder="name@School.edu"
                                 />
                             </div>
                         </div>
@@ -280,7 +280,7 @@ const Login = () => {
 
                 {/* Footer Link */}
                 <p className="text-center mt-8 text-xs font-medium text-slate-400">
-                    © 2026 College Administration System
+                    © 2026 School Administration System
                 </p>
             </div>
         </div>

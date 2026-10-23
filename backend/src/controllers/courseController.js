@@ -56,10 +56,10 @@ exports.getCourses = async (req, res) => {
         const result = await db.query(`
             SELECT 
                 c.*,
-                (SELECT COUNT(*) FROM subject s WHERE s.courcecode = c.course_code) AS subject_count,
-                (SELECT COUNT(*) FROM students st WHERE st.Courcecode = c.course_code) AS student_count
+                (SELECT COUNT(*) FROM subject s WHERE LOWER(s.courcecode) = LOWER(c.course_code)) AS subject_count,
+                (SELECT COUNT(*) FROM students st WHERE LOWER(st.courcecode) = LOWER(c.course_code)) AS student_count
             FROM courses c
-            ORDER BY c.id DESC
+            ORDER BY c.course_code ASC
         `);
 
         res.json(result.rows);

@@ -1,16 +1,16 @@
 {
-  "name": "college-management-system",
+  "name": "School-management-system",
   "private": true,
   "version": "2.1.0-alpha",
-  "description": "A cross-platform college management system for managing courses, students, faculty, attendance, marks, and academic records.",
+  "description": "A cross-platform School management system for managing courses, students, faculty, attendance, marks, and academic records.",
   "author": "Sayem Parvez",
-  "homepage": "https://github.com/SayemParvez/College_Management_system",
+  "homepage": "https://github.com/SayemParvez/School_Management_system",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SayemParvez/College_Management_system.git"
+    "url": "git+https://github.com/SayemParvez/School_Management_system.git"
   },
   "bugs": {
-    "url": "https://github.com/SayemParvez/College_Management_system/issues"
+    "url": "https://github.com/SayemParvez/School_Management_system/issues"
   },
   "engines": {
     "node": ">=20.19.0"
@@ -74,8 +74,8 @@
     "directories": {
       "output": "release/installers"
     },
-    "appId": "com.college.cms",
-    "productName": "College Management System",
+    "appId": "com.School.cms",
+    "productName": "School Management System",
     "files": [
       "release/**/*",
       "electron/**/*",

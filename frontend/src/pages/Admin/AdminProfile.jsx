@@ -92,7 +92,7 @@ const AdminProfile = () => {
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-tight">
                                 {admin.collagename}
                             </h2>
-                            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">College Administration Account</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">School Administration Account</p>
                         </div>
                     </div>
                 </section>
@@ -219,7 +219,7 @@ const EditDetailsModal = ({ admin, token, onClose }) => {
             </div>
 
             <div className="space-y-4">
-                <StyledInput label="College Name" value={form.collagename} onChange={(e) => setForm({...form, collagename: e.target.value})} />
+                <StyledInput label="School Name" value={form.collagename} onChange={(e) => setForm({...form, collagename: e.target.value})} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <StyledInput label="Email Address" value={form.emailid} onChange={(e) => setForm({...form, emailid: e.target.value})} />
                     <StyledInput label="Contact Number" value={form.contactnumber} onChange={(e) => setForm({...form, contactnumber: e.target.value})} />

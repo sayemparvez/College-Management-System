@@ -20,6 +20,7 @@ import Subjects from "./pages/Admin/Subjects";
 import AssignSubjects from "./pages/Admin/AssignSubjects";
 import Faculties from "./pages/Admin/Faculties.jsx";
 import Students from "./pages/Admin/Students.jsx";
+import PromoteStudents from "./pages/Admin/PromoteStudents.jsx";
 import TakeAttendance from "./pages/Admin/TakeAttendance";
 import EditAttendance from "./pages/Admin/EditAttendance";
 import AttendanceReport from "./pages/Admin/AttendanceReport";
@@ -27,6 +28,7 @@ import EnterMarks from "./pages/Admin/EnterMarks";
 import EditMarks from "./pages/Admin/EditMarks";
 import MarksReport from "./pages/Admin/MarksReport";
 import PrintMarksheet from "./pages/Admin/PrintMarksheet";
+import PublishResult from "./pages/Admin/PublishResult";
 
 import FacultyDashboard from "./pages/Faculty/FacultyDashboard";
 import FacultyLayout from "./pages/Faculty/FacultyLayout.jsx";
@@ -38,7 +40,7 @@ import FacultyAttendanceReport from "./pages/Faculty/FacultyAttendanceReport";
 import FacultyMarksReport from "./pages/Faculty/FacultyMarksReport";
 
 import StudentDashboard from "./pages/Student/StudentDashboard";
-import StudentLayout from "./pages/Student/StudentLayout.jsx"
+import StudentLayout from "./pages/Student/StudentLayout.jsx";
 import StudentProfile from "./pages/Student/StudentProfile";
 import StudentAttendance from "./pages/Student/StudentAttendance";
 import StudentMarksheet from "./pages/Student/StudentMarksheet";
@@ -97,25 +99,21 @@ const RootHandler = () => {
     return <Login />;
 };
 
-/* ===================== App ===================== */
+/* ===================== App Component ===================== */
 
 function App() {
     return (
         <Router>
             <RouteTracker />
-
             <Routes>
-
-                {/* Smart Root Route */}
+                {/* Root Route */}
                 <Route path="/" element={<RootHandler />} />
 
-                {/* Print Marksheet */}
-                <Route path="/print-marksheet" element={<PrintMarksheet />} />
-
-                {/* OAuth Redirect Handler */}
+                {/* Public / Auth */}
+                <Route path="/login" element={<Login />} />
                 <Route path="/oauth-success" element={<OAuthSuccess />} />
 
-                {/* Public marksheet verification */}
+                {/* Marksheet Verification */}
                 <Route path="/verify/marksheet/:marksheetId" element={<VerifyMarksheet />} />
 
                 {/* ===================== Admin Section ===================== */}
@@ -134,33 +132,35 @@ function App() {
                     <Route path="assign-subjects" element={<AssignSubjects />} />
                     <Route path="faculties" element={<Faculties />} />
                     <Route path="students" element={<Students />} />
+                    <Route path="promote-students" element={<PromoteStudents />} />
                     <Route path="take-attendance" element={<TakeAttendance />} />
                     <Route path="edit-attendance" element={<EditAttendance />} />
                     <Route path="attendance-report" element={<AttendanceReport />} />
                     <Route path="enter-marks" element={<EnterMarks />} />
                     <Route path="edit-marks" element={<EditMarks />} />
+                    <Route path="publish-result" element={<PublishResult />} />
                     <Route path="marks-report" element={<MarksReport />} />
                     <Route path="print-marksheet" element={<PrintMarksheet />} />
                 </Route>
 
                 {/* ===================== Faculty ===================== */}
                 <Route
-    path="/faculty"
-    element={
-        <ProtectedRoute allowedRole="faculty">
-            <FacultyLayout />
-        </ProtectedRoute>
-    }
->
-    <Route path="dashboard" element={<FacultyDashboard />} />
-    <Route path="take-attendance" element={<FacultyTakeAttendance />} />
-    <Route path="edit-attendance" element={<FacultyEditAttendance />} />
-    <Route path="enter-marks" element={<FacultyEnterMarks />} />
-    <Route path="attendance-report" element={<FacultyAttendanceReport />} />
-    <Route path="marks-report" element={<FacultyMarksReport />} />
-    
-    <Route path="profile" element={<FacultyProfile />} />
-</Route>
+                    path="/faculty"
+                    element={
+                        <ProtectedRoute allowedRole="faculty">
+                            <FacultyLayout />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route path="dashboard" element={<FacultyDashboard />} />
+                    <Route path="take-attendance" element={<FacultyTakeAttendance />} />
+                    <Route path="edit-attendance" element={<FacultyEditAttendance />} />
+                    <Route path="enter-marks" element={<FacultyEnterMarks />} />
+                    <Route path="publish-result" element={<PublishResult />} />
+                    <Route path="attendance-report" element={<FacultyAttendanceReport />} />
+                    <Route path="marks-report" element={<FacultyMarksReport />} />
+                    <Route path="profile" element={<FacultyProfile />} />
+                </Route>
 
                 {/* ===================== Student ===================== */}
                 <Route
@@ -172,16 +172,13 @@ function App() {
                     }
                 >
                     <Route path="dashboard" element={<StudentDashboard />} />
-                    <Route path="profile" element={<StudentProfile />} />
                     <Route path="attendance" element={<StudentAttendance />} />
                     <Route path="marksheet" element={<StudentMarksheet />} />
-
-
+                    <Route path="profile" element={<StudentProfile />} />
                 </Route>
 
-                {/* Catch All */}
+                {/* Catch all */}
                 <Route path="*" element={<Navigate to="/" replace />} />
-
             </Routes>
         </Router>
     );

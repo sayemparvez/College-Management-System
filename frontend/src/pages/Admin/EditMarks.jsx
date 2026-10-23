@@ -212,7 +212,11 @@ const EditMarks = () => {
         } catch { setToast({ type: "error", message: "Synchronization failed." }); }
     };
 
-    const maxTotal = (Number(subjectDetails?.cq_max_marks || 0) + Number(subjectDetails?.mcq_max_marks || 0) + Number(subjectDetails?.practicalmarks || 0)) || (Number(subjectDetails?.theorymarks || 0) + Number(subjectDetails?.practicalmarks || 0));
+        const theoryMax = (Number(subjectDetails?.cq_max_marks || 0) + Number(subjectDetails?.mcq_max_marks || 0)) > 0
+        ? (Number(subjectDetails?.cq_max_marks || 0) + Number(subjectDetails?.mcq_max_marks || 0))
+        : Number(subjectDetails?.theorymarks || 0);
+    const practicalMax = Number(subjectDetails?.practicalmarks || 0);
+    const maxTotal = theoryMax + practicalMax;
 
     return (
         <div className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans">
@@ -289,8 +293,9 @@ const EditMarks = () => {
                                 <span className="text-xs text-slate-500 ml-2 font-mono">({selectedSubject})</span>
                             </div>
                             <div className="flex gap-2 text-xs">
-                                {hasCQ && <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold">CQ Max: {subjectDetails.cq_max_marks}</span>}
-                                {hasMCQ && <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-semibold">MCQ Max: {subjectDetails.mcq_max_marks}</span>}
+                                {hasCQ && <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold">CQ: {subjectDetails.cq_max_marks}</span>}
+                                {hasMCQ && <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-semibold">MCQ: {subjectDetails.mcq_max_marks}</span>}
+                                {hasLegacyTheory && <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">Written: {subjectDetails.theorymarks}</span>}
                                 {hasPractical && <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold">Practical: {subjectDetails.practicalmarks}</span>}
                                 <span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">Total: {maxTotal}</span>
                             </div>
@@ -303,7 +308,7 @@ const EditMarks = () => {
                                     <th className="px-4 py-3.5">Student</th>
                                     {hasCQ && <th className="px-3 py-3.5 text-center">CQ (সৃজনশীল) <br/><span className="text-[10px] text-slate-400">/{subjectDetails.cq_max_marks}</span></th>}
                                     {hasMCQ && <th className="px-3 py-3.5 text-center">MCQ (নৈর্ব্যক্তিক) <br/><span className="text-[10px] text-slate-400">/{subjectDetails.mcq_max_marks}</span></th>}
-                                    {hasLegacyTheory && <th className="px-3 py-3.5 text-center">Theory <br/><span className="text-[10px] text-slate-400">/{subjectDetails.theorymarks}</span></th>}
+                                    {hasLegacyTheory && <th className="px-3 py-3.5 text-center">Written (লিখিত) <br/><span className="text-[10px] text-slate-400">/{subjectDetails.theorymarks}</span></th>}
                                     {hasPractical && <th className="px-3 py-3.5 text-center">Practical (ব্যবহারিক) <br/><span className="text-[10px] text-slate-400">/{subjectDetails.practicalmarks}</span></th>}
                                     <th className="px-3 py-3.5 text-center">Total Score <br/><span className="text-[10px] text-slate-400">/{maxTotal}</span></th>
                                     <th className="px-3 py-3.5 text-center">Grade</th>

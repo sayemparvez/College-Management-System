@@ -6,6 +6,7 @@ import {
     GraduationCap,
     BarChart3,
     User,
+    Award
 } from "lucide-react";
 
 export const adminNavigation = [
@@ -28,6 +29,7 @@ export const adminNavigation = [
         icon: Users,
         children: [
             { name: "Students", path: "/admin/students" },
+            { name: "Promote Students", path: "/admin/promote-students" },
             { name: "Teachers", path: "/admin/faculties" },
         ],
     },
@@ -45,6 +47,7 @@ export const adminNavigation = [
         children: [
             { name: "Enter Marks", path: "/admin/enter-marks" },
             { name: "Edit Marks", path: "/admin/edit-marks" },
+            { name: "Publish Result", path: "/admin/publish-result" },
         ],
     },
     {
@@ -84,6 +87,7 @@ export const facultyNavigation = [
         icon: GraduationCap,
         children: [
             { name: "Enter Marks", path: "/faculty/enter-marks" },
+            { name: "Publish Result", path: "/faculty/publish-result" },
         ],
     },
     {

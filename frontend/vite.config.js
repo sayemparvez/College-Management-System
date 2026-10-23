@@ -24,9 +24,9 @@ export default defineConfig(({ mode }) => {
         includeAssets: ["favicon.ico"],
 
         manifest: {
-          name: "College Management System",
+          name: "School Management System",
           short_name: "CMS",
-          description: "College Management System",
+          description: "School Management System",
           theme_color: "#111827",
           background_color: "#ffffff",
           display: "standalone",

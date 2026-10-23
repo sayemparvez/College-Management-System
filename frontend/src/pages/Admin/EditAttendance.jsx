@@ -23,7 +23,7 @@ const EditAttendance = () => {
     const [attendanceDates, setAttendanceDates] = useState([]);
 
     const [selectedCourse, setSelectedCourse] = useState("");
-    const [selectedSem, setSelectedSem] = useState("");
+    const [selectedSem, setSelectedSem] = useState("1");
     const [selectedSubject, setSelectedSubject] = useState("");
     const [selectedDate, setSelectedDate] = useState("");
 
@@ -298,31 +298,33 @@ const EditAttendance = () => {
                         <h2 className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Record Selection</h2>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <select value={selectedCourse} onChange={(e) => { setSelectedCourse(e.target.value); setSelectedSem(""); setError(""); }}
-                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer">
-                            <option value="">Course...</option>
-                            {courses.map(course => <option key={course.id} value={course.course_code}>{course.course_name}</option>)}
-                        </select>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Class (শ্রেণি)</label>
+                            <select value={selectedCourse} onChange={(e) => { setSelectedCourse(e.target.value); setError(""); }}
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer">
+                                <option value="">Select Class / শ্রেণি...</option>
+                                {courses.map(course => <option key={course.id} value={course.course_code}>{course.course_name}</option>)}
+                            </select>
+                        </div>
 
-                        <select value={selectedSem} onChange={(e) => { setSelectedSem(e.target.value); setSelectedSubject(""); setError(""); }} disabled={!selectedCourse}
-                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 disabled:opacity-40 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer">
-                            <option value="">{semLabel}...</option>
-                            {semesterOptions.map(num => <option key={num} value={num}>{semLabel} {num}</option>)}
-                        </select>
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Period (পিরিয়ড)</label>
+                            <select value={selectedSubject} onChange={(e) => { setSelectedSubject(e.target.value); setSelectedDate(""); setError(""); }} disabled={!selectedCourse}
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 disabled:opacity-40 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer">
+                                <option value="DAILY_1ST">1st Period / Daily Attendance (১ম পিরিয়ড - দৈনিক হাজিরা)</option>
+                                {subjects.map(sub => <option key={sub.subjectcode} value={sub.subjectcode}>{sub.subjectname}</option>)}
+                            </select>
+                        </div>
 
-                        <select value={selectedSubject} onChange={(e) => { setSelectedSubject(e.target.value); setSelectedDate(""); setError(""); }} disabled={!selectedSem}
-                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 disabled:opacity-40 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer">
-                            <option value="">Subject / পিরিয়ড...</option>
-                            <option value="DAILY_1ST">1st Period / Daily Attendance (১ম পিরিয়ড - দৈনিক হাজিরা)</option>
-                            {subjects.map(sub => <option key={sub.subjectcode} value={sub.subjectcode}>{sub.subjectname}</option>)}
-                        </select>
-
-                        <select value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setError(""); }} disabled={!selectedSubject || attendanceDates.length === 0}
-                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 disabled:opacity-40 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer">
-                            <option value="">{attendanceDates.length === 0 && selectedSubject ? "No Records Found" : "Select Date..."}</option>
-                            {attendanceDates.map(d => <option key={d.date} value={d.date}>{d.date}</option>)}
-                        </select>
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Date (তারিখ)</label>
+                            <select value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setError(""); }} disabled={!selectedSubject || attendanceDates.length === 0}
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 disabled:opacity-40 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer">
+                                <option value="">{attendanceDates.length === 0 && selectedSubject ? "No Records Found" : "Select Date..."}</option>
+                                {attendanceDates.map(d => <option key={d.date} value={d.date}>{d.date}</option>)}
+                            </select>
+                        </div>
                     </div>
                 </section>
 

@@ -8,7 +8,10 @@ import {
     Trophy,
     RotateCcw,
     ChevronDown,
-    ListChecks
+    ListChecks,
+    Lock,
+    Clock,
+    AlertCircle
 } from "lucide-react";
 import { calculateNCTBGrade, getExamShortName } from "../../utils/academicHelper";
 
@@ -30,37 +33,52 @@ const StudentMarksheet = () => {
     const [selectedSem, setSelectedSem] = useState("");
     const [selectedSubject, setSelectedSubject] = useState("");
     const [courseCode, setCourseCode] = useState("");
+    const [isPublished, setIsPublished] = useState(true);
+    const [pendingMessage, setPendingMessage] = useState("");
+    const [loading, setLoading] = useState(true);
 
-    const fetchMarks = async () => {
+    const fetchMarks = async (sem = "") => {
         try {
-            const res = await api.get("/api/student/marks", {
+            setLoading(true);
+            const url = sem ? `/api/student/marks?sem=${sem}` : "/api/student/marks";
+            const res = await api.get(url, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setAllMarks(res.data.marks || []);
-            setMarks(res.data.marks || []);
-            // detect course code from first mark
-            if (res.data.marks?.length) setCourseCode(res.data.marks[0].courcecode || "");
+            
+            if (res.data.isPublished === false) {
+                setIsPublished(false);
+                setPendingMessage(res.data.message || "ফলাফল এখনও প্রধান শিক্ষক বা অ্যাডমিন কর্তৃক অনুমোদন ও প্রকাশ করা হয়নি।");
+                setAllMarks([]);
+                setMarks([]);
+            } else {
+                setIsPublished(true);
+                setPendingMessage("");
+                setAllMarks(res.data.marks || []);
+                setMarks(res.data.marks || []);
+                if (res.data.course) setCourseCode(res.data.course);
+                else if (res.data.marks?.length) setCourseCode(res.data.marks[0].courcecode || "");
+            }
         } catch (error) {
             console.error(error);
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchMarks();
-    }, []);
+        fetchMarks(selectedSem);
+    }, [selectedSem]);
 
     useEffect(() => {
+        if (!isPublished) return;
         let filtered = allMarks;
-        if (selectedSem) {
-            filtered = filtered.filter(m => String(m.semoryear) === String(selectedSem));
-        }
         if (selectedSubject) {
             filtered = filtered.filter(m => String(m.subjectcode) === String(selectedSubject));
         }
         setMarks(filtered);
-    }, [selectedSem, selectedSubject, allMarks]);
+    }, [selectedSubject, allMarks, isPublished]);
 
-    const semesters = [...new Set(allMarks.map(m => m.semoryear))];
+    const semesters = [1, 2];
     const subjects = [
         ...new Map(
             allMarks
@@ -92,7 +110,7 @@ const StudentMarksheet = () => {
                         </div>
                         <div>
                             <h1 className="text-lg font-bold tracking-tight leading-tight">My Marksheet</h1>
-                            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest hidden sm:block">Academic Performance</p>
+                            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest hidden sm:block">Academic Performance • পরীক্ষার ফলাফল ও মার্কশিট</p>
                         </div>
                     </div>
                     {(selectedSem || selectedSubject) && (
@@ -106,25 +124,37 @@ const StudentMarksheet = () => {
             {/* MAIN CONTENT AREA */}
             <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-6 space-y-6">
 
+                {/* RESULT NOT PUBLISHED NOTICE */}
+                {!isPublished && (
+                    <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-6 text-center space-y-3 shadow-sm animate-in fade-in duration-300">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+                            <Lock className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200">
+                            ফলাফল অনুমোদন ও প্রকাশের অপেক্ষায় রয়েছে
+                        </h3>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 max-w-xl mx-auto leading-relaxed">
+                            {pendingMessage || "আপনার শ্রেণির ফলাফল এখনও প্রধান শিক্ষক বা অ্যাডমিন কর্তৃক অনুমোদন ও প্রকাশ করা হয়নি। বিদ্যালয় কর্তৃপক্ষ কর্তৃক ফলাফল অনুমোদন ও প্রকাশের সাথে সাথে এখানে পূর্ণাঙ্গ নম্বর ও মার্কশিট দেখতে পাবেন।"}
+                        </p>
+                    </div>
+                )}
+
                 {/* FILTER CARD */}
                 <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Filter className="w-4 h-4 text-indigo-500" />
-                        <h2 className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Filter Results</h2>
+                        <h2 className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Select Examination (পরীক্ষা নির্বাচন)</h2>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="relative">
                             <select
                                 value={selectedSem}
                                 onChange={(e) => { setSelectedSem(e.target.value); setSelectedSubject(""); }}
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all appearance-none cursor-pointer"
+                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all appearance-none cursor-pointer font-medium"
                             >
-                                <option value="">All Exams</option>
-                                {semesters.map((sem, i) => (
-                                    <option key={i} value={sem}>
-                                        {getExamShortName(courseCode, sem)} Exam
-                                    </option>
-                                ))}
+                                <option value="">Select Exam / পরীক্ষা...</option>
+                                <option value="1">Half Yearly Exam (অর্ধ-বার্ষিক পরীক্ষা)</option>
+                                <option value="2">Final Exam (বার্ষিক পরীক্ষা)</option>
                             </select>
                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                         </div>
@@ -133,9 +163,10 @@ const StudentMarksheet = () => {
                             <select
                                 value={selectedSubject}
                                 onChange={(e) => setSelectedSubject(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all appearance-none cursor-pointer"
+                                disabled={!isPublished || marks.length === 0}
+                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all appearance-none cursor-pointer disabled:opacity-40 font-medium"
                             >
-                                <option value="">All Subjects</option>
+                                <option value="">All Subjects (সকল বিষয়)</option>
                                 {subjects.map((sub) => <option key={sub.code} value={sub.code}>{sub.name}</option>)}
                             </select>
                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -143,26 +174,28 @@ const StudentMarksheet = () => {
                     </div>
                 </section>
 
-                {/* SUMMARY CARDS */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                        { label: "Subjects", value: totalSubjects, icon: BookOpen },
-                        { label: "Total Marks", value: totalMarks, icon: Percent },
-                        { label: "Avg. Score", value: avgMarks, icon: BarChart3 },
-                        { label: "Highest Score", value: highest, icon: Trophy },
-                    ].map((item, i) => (
-                        <div key={i} className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-                            <div className="flex justify-between mb-2">
-                                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{item.label}</p>
-                                <item.icon className="w-3.5 h-3.5 text-indigo-500" />
+                {/* SUMMARY CARDS (only if published) */}
+                {isPublished && marks.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                            { label: "Subjects", value: totalSubjects, icon: BookOpen },
+                            { label: "Total Marks", value: totalMarks, icon: Percent },
+                            { label: "Avg. Score", value: avgMarks, icon: BarChart3 },
+                            { label: "Highest Score", value: highest, icon: Trophy },
+                        ].map((item, i) => (
+                            <div key={i} className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+                                <div className="flex justify-between mb-2">
+                                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{item.label}</p>
+                                    <item.icon className="w-3.5 h-3.5 text-indigo-500" />
+                                </div>
+                                <p className="text-xl font-black text-slate-900 dark:text-slate-100">{item.value}</p>
                             </div>
-                            <p className="text-xl font-black text-slate-900 dark:text-slate-100">{item.value}</p>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* DATA TABLE */}
-                {marks.length > 0 ? (
+                {isPublished && marks.length > 0 ? (
                     <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[640px]">
@@ -180,7 +213,6 @@ const StudentMarksheet = () => {
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                     {marks.map((item, index) => {
                                         const total = Number(item.theorymarks || 0) + Number(item.practicalmarks || 0);
-                                        // Determine max for NCTB grading (use 100 as default)
                                         const max = (Number(item.theoryfull || 0) + Number(item.practicalfull || 0)) || 100;
                                         const { grade, point } = item.grade
                                             ? { grade: item.grade, point: item.grade_point ?? 0 }
@@ -224,20 +256,19 @@ const StudentMarksheet = () => {
                             </table>
                         </div>
                     </section>
-                ) : (
+                ) : isPublished && !loading ? (
                     /* EMPTY STATE */
                     <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-center px-4 shadow-sm">
                         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl mb-4">
                             <ListChecks className="w-8 h-8 text-indigo-600" />
                         </div>
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">No Records Found</h2>
-                        <p className="text-sm text-slate-500 mt-1 max-w-xs">We couldn't find any marks matching your selected criteria. Try adjusting your filters.</p>
+                        <p className="text-sm text-slate-500 mt-1 max-w-xs">পরীক্ষার নাম নির্বাচন করুন অথবা ফিল্টার পরিবর্তন করুন।</p>
                     </div>
-                )}
+                ) : null}
             </main>
         </div>
     );
 };
 
 export default StudentMarksheet;
-

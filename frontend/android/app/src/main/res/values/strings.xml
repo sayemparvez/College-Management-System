@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">CMS</string>
     <string name="title_activity_main">CMS</string>
-    <string name="package_name">com.college.cms</string>
-    <string name="custom_url_scheme">com.college.cms</string>
+    <string name="package_name">com.School.cms</string>
+    <string name="custom_url_scheme">com.School.cms</string>
 </resources>

@@ -131,6 +131,13 @@ router.get(
 );
 
 // Import Students From Excel
+// Promote Students
+router.post(
+    "/promote",
+    authMiddleware,
+    studentController.promoteStudents
+);
+
 router.post(
     "/import",
     authMiddleware,

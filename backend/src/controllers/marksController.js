@@ -3,6 +3,24 @@ const path = require("path");
 const db = require("../config/db");
 const ExcelJS = require("exceljs");
 const XLSX = require("xlsx");
+const { createNotification } = require("./notificationController");
+
+const isHeadTeacherOrAdmin = async (user) => {
+    if (!user) return false;
+    const role = (user.role || "").toLowerCase();
+    if (role === "admin") return true;
+    if (role === "faculty") {
+        const res = await db.query(
+            "SELECT position FROM faculties WHERE emailid = $1",
+            [user.email]
+        );
+        if (res.rows.length > 0) {
+            const pos = String(res.rows[0].position || "").toLowerCase();
+            return pos.includes("head") || pos.includes("principal");
+        }
+    }
+    return false;
+};
 
 const adminUploadDir = path.resolve(__dirname, "../../uploads/admin");
 
@@ -88,6 +106,22 @@ exports.saveMarks = async (req, res) => {
                 ]
             );
         }
+
+                // Notify Admin & Head Teacher
+        let teacherName = req.user?.email || "শিক্ষক";
+        if (req.user?.role === "faculty") {
+            const fRes = await db.query("SELECT facultyname FROM faculties WHERE emailid = $1", [req.user.email]);
+            if (fRes.rows.length > 0 && fRes.rows[0].facultyname) {
+                teacherName = fRes.rows[0].facultyname;
+            }
+        }
+        await createNotification({
+            userprofile: "admin",
+            courcecode: course,
+            semoryear: sem,
+            title: "নম্বর এন্ট্রি জমা হয়েছে",
+            message: `${teacherName} কর্তৃক ${course} শ্রেণির (${subjectname || subject}) বিষয়ে নম্বর এন্ট্রি সম্পন্ন হয়েছে।`
+        });
 
         res.json({ message: "Marks saved successfully" });
 
@@ -451,6 +485,28 @@ exports.getMarksForEdit = async (req, res) => {
     try {
         const { course, sem, subject } = req.query;
 
+        // Privacy check: only assigned teacher, Head Teacher, or Admin can view before publication
+        const isHeadOrAdmin = await isHeadTeacherOrAdmin(req.user);
+        if (!isHeadOrAdmin && req.user?.role === "faculty") {
+            const facCheck = await db.query(
+                "SELECT subject FROM faculties WHERE emailid = $1",
+                [req.user.email]
+            );
+            const assignedSubject = facCheck.rows[0]?.subject;
+            if (assignedSubject !== subject) {
+                const resultCheck = await db.query(
+                    "SELECT isdeclared FROM result WHERE courcecode = $1 AND semoryear = $2",
+                    [course, sem]
+                );
+                const isPublished = resultCheck.rows.length > 0 && Number(resultCheck.rows[0].isdeclared) === 1;
+                if (!isPublished) {
+                    return res.status(403).json({
+                        message: "গোপনীয়তা নীতি: ফলাফল অনুমোদিত ও প্রকাশিত না হওয়া পর্যন্ত শুধুমাত্র সংশ্লিষ্ট বিষয়ের শিক্ষক, প্রধান শিক্ষক ও অ্যাডমিন এই নম্বর দেখতে পারেন।"
+                    });
+                }
+            }
+        }
+
         const result = await db.query(
             `SELECT
                  s.rollnumber,
@@ -495,6 +551,20 @@ exports.getMarksForEdit = async (req, res) => {
 exports.updateMarks = async (req, res) => {
     try {
         const { course, sem, subject, marks } = req.body;
+
+        const isHeadOrAdmin = await isHeadTeacherOrAdmin(req.user);
+        if (!isHeadOrAdmin && req.user?.role === "faculty") {
+            const facCheck = await db.query(
+                "SELECT subject FROM faculties WHERE emailid = $1",
+                [req.user.email]
+            );
+            const assignedSubject = facCheck.rows[0]?.subject;
+            if (assignedSubject !== subject) {
+                return res.status(403).json({
+                    message: "আপনি শুধুমাত্র আপনার নির্ধারিত বিষয়ের নম্বর পরিবর্তন করতে পারবেন।"
+                });
+            }
+        }
 
         for (let i = 0; i < marks.length; i++) {
             const { rollnumber, theorymarks, practicalmarks, cq_marks, mcq_marks } = marks[i];
@@ -546,6 +616,21 @@ exports.getMarksReport = async (req, res) => {
     try {
 
         const { course, sem } = req.query;
+
+        const isHeadOrAdmin = await isHeadTeacherOrAdmin(req.user);
+        if (!isHeadOrAdmin) {
+            const resultCheck = await db.query(
+                "SELECT isdeclared FROM result WHERE courcecode = $1 AND semoryear = $2",
+                [course, sem]
+            );
+            const isPublished = resultCheck.rows.length > 0 && Number(resultCheck.rows[0].isdeclared) === 1;
+            if (!isPublished) {
+                return res.status(403).json({
+                    message: "ফলাফল এখনও প্রধান শিক্ষক বা অ্যাডমিন কর্তৃক অনুমোদন ও প্রকাশ করা হয়নি।",
+                    isPublished: false
+                });
+            }
+        }
 
         const result = await db.query(
             `SELECT
@@ -645,6 +730,28 @@ exports.getSubjectReport = async (req, res) => {
     try {
 
         const { course, sem, subject } = req.query;
+
+        const isHeadOrAdmin = await isHeadTeacherOrAdmin(req.user);
+        if (!isHeadOrAdmin && req.user?.role === "faculty") {
+            const facCheck = await db.query(
+                "SELECT subject FROM faculties WHERE emailid = $1",
+                [req.user.email]
+            );
+            const assignedSubject = facCheck.rows[0]?.subject;
+            if (assignedSubject !== subject) {
+                const resultCheck = await db.query(
+                    "SELECT isdeclared FROM result WHERE courcecode = $1 AND semoryear = $2",
+                    [course, sem]
+                );
+                const isPublished = resultCheck.rows.length > 0 && Number(resultCheck.rows[0].isdeclared) === 1;
+                if (!isPublished) {
+                    return res.status(403).json({
+                        message: "এই বিষয়ের ফলাফল এখনও প্রধান শিক্ষক বা অ্যাডমিন কর্তৃক অনুমোদন ও প্রকাশ করা হয়নি।",
+                        isPublished: false
+                    });
+                }
+            }
+        }
 
         const result = await db.query(
             `SELECT
@@ -753,12 +860,27 @@ exports.getStudentMarksheet = async (req, res) => {
 
         const { course, sem, roll } = req.query;
 
+        const isHeadOrAdmin = await isHeadTeacherOrAdmin(req.user);
+        if (!isHeadOrAdmin) {
+            const resultCheck = await db.query(
+                "SELECT isdeclared FROM result WHERE courcecode = $1 AND semoryear = $2",
+                [course, sem]
+            );
+            const isPublished = resultCheck.rows.length > 0 && Number(resultCheck.rows[0].isdeclared) === 1;
+            if (!isPublished) {
+                return res.status(403).json({
+                    message: "ফলাফল এখনও প্রধান শিক্ষক বা অ্যাডমিন কর্তৃক অনুমোদন ও প্রকাশ করা হয়নি।",
+                    isPublished: false
+                });
+            }
+        }
+
         if (!course || !sem || !roll) {
             return res.status(400).json({ message: "Missing parameters" });
         }
 
         // ============================
-        // Get College Info
+        // Get School Info
         // ============================
 
         const adminResult = await db.query(
@@ -767,12 +889,12 @@ exports.getStudentMarksheet = async (req, res) => {
 
         const adminRows = adminResult.rows;
 
-        const collegeName = adminRows.length
+        const SchoolName = adminRows.length
             ? adminRows[0].collagename
-            : "College";
+            : "School";
 
         const logoFile = getAdminLogo();
-        const collegeLogo = `/uploads/admin/${logoFile}`;
+        const SchoolLogo = `/uploads/admin/${logoFile}`;
 
         // ============================
         // Fetch Student Marks
@@ -815,8 +937,8 @@ exports.getStudentMarksheet = async (req, res) => {
 
         if (!rows.length) {
             return res.json({
-                collegeName,
-                collegeLogo,
+                SchoolName,
+                SchoolLogo,
                 marks: [],
                 summary: null
             });
@@ -911,8 +1033,8 @@ exports.getStudentMarksheet = async (req, res) => {
             : (termNum === 1 ? "Half Yearly Examination" : "Final Examination");
 
         res.json({
-            collegeName,
-            collegeLogo,
+            SchoolName,
+            SchoolLogo,
             examName,
             marks: processedRows,
             summary: {

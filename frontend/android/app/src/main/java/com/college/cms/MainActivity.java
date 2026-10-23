@@ -1,4 +1,4 @@
-package com.college.cms;
+package com.School.cms;
 
 import com.getcapacitor.BridgeActivity;
 

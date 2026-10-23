@@ -6,7 +6,7 @@ import os from "os";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.setPath("userData", path.join(os.homedir(), ".college-management-system"));
+app.setPath("userData", path.join(os.homedir(), ".School-management-system"));
 let mainWindow;
 
 /* ================= Resolve React Build ================= */

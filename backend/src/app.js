@@ -18,14 +18,14 @@ const studentDashboardRoutes = require("./routes/studentDashboardRoutes");
 const studentProfileRoutes = require("./routes/studentProfileRoutes");
 const studentAttendanceRoutes = require("./routes/studentAttendanceRoutes");
 const studentMarksheetRoutes = require("./routes/studentMarksheetRoutes");
+const resultRoutes = require("./routes/resultRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
-
 
 app.use(
     cors({
         origin: function (origin, callback) {
-
             // allow requests without origin (mobile apps, curl, etc.)
             if (!origin) return callback(null, true);
 
@@ -68,5 +68,7 @@ app.use("/api/student", studentDashboardRoutes);
 app.use("/api/student", studentProfileRoutes);
 app.use("/api/student", studentAttendanceRoutes);
 app.use("/api/student", studentMarksheetRoutes);
+app.use("/api/result", resultRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 module.exports = app;
