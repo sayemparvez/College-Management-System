@@ -266,8 +266,6 @@ This repo isn't under active feature development, so response times on issues or
 
 ## Team
 
-Built as a B.Tech (CSE) project at Government College of Engineering, Keonjhar.
-
 | Name | Role |
 |---|---|
 | Sayem Parvez | Team Member |
